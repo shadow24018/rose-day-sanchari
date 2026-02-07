@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rose Catcher for Sanchari</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #fff1f2;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .title-font {
+            font-family: 'Pacifico', cursive;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-heart {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .heart-pulse {
+            animation: pulse-heart 1.5s infinite;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            animation: fall linear forwards;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(720deg); }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative select-none">
+
+    <button id="mute-btn" onclick="toggleMute()" class="absolute top-4 right-4 z-50 bg-white/50 backdrop-blur p-2 rounded-full hidden">
+        🔊
+    </button>
+
+    <!-- Screen 1: Intro -->
+    <div id="intro-screen" class="absolute inset-0 flex flex-col items-center justify-center z-20 bg-pink-50 p-6 text-center">
+        <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border-4 border-pink-200">
+            <h1 class="text-4xl md:text-5xl text-pink-600 mb-2 title-font">Hey Sanchari!</h1>
+            <p class="text-gray-500 text-sm mb-6 uppercase tracking-widest font-bold italic">Rose Day Special</p>
+            
+            <div class="bg-pink-50 rounded-2xl p-4 mb-6 border border-pink-100 text-left">
+                <h3 class="text-pink-700 font-bold mb-2 flex items-center">
+                    <span class="mr-2">📝</span> How to Play:
+                </h3>
+                <ul class="text-gray-600 text-sm space-y-2">
+                    <li class="flex items-start">
+                        <span class="mr-2">👉</span> 
+                        <span><b>Catch 10</b> fresh roses (🌹) to unlock your surprise!</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2">🚫</span> 
+                        <span><b>Avoid</b> the withered ones (🥀) - they reduce your score!</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2">⏱️</span> 
+                        <span>You have <b>20 seconds</b> on the clock.</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="mr-2">🧺</span> 
+                        <span><b>Slide</b> your finger or mouse to move the basket.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <button onclick="startGame()" class="bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 text-white font-bold py-4 px-8 rounded-full text-xl shadow-lg transform transition hover:scale-105 active:scale-95 w-full mb-4">
+                Let's Catch Some Roses!
+            </button>
+            <p class="text-[10px] text-gray-400">Best played with sound on 🎵</p>
+        </div>
+    </div>
+
+    <!-- Screen 2: Game UI -->
+    <div id="game-ui" class="absolute inset-0 pointer-events-none hidden z-10 flex flex-col justify-between p-4 pt-safe">
+        <div class="flex justify-between items-start pt-2">
+            <div class="bg-white/80 backdrop-blur-sm p-3 rounded-2xl shadow-md border-2 border-pink-200 pointer-events-auto">
+                <p class="text-pink-600 font-bold text-xl">Roses: <span id="score-display">0</span>/10</p>
+            </div>
+            <div class="bg-white/80 backdrop-blur-sm p-3 rounded-2xl shadow-md border-2 border-pink-200 pointer-events-auto">
+                <p class="text-gray-700 font-bold text-xl">Time: <span id="timer-display">20</span>s</p>
+            </div>
+        </div>
+        <div id="tutorial-text" class="text-center text-pink-800/50 font-bold animate-pulse mb-32 md:mb-20">
+            Slide to move basket!
+        </div>
+    </div>
+
+    <canvas id="game-canvas" class="absolute inset-0 bg-gradient-to-b from-blue-50 to-pink-100"></canvas>
+
+    <!-- Screen 3: Lose -->
+    <div id="game-over-screen" class="hidden absolute inset-0 flex flex-col items-center justify-center z-30 bg-black/50 p-6 backdrop-blur-sm">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center border-4 border-gray-200">
+            <h2 class="text-3xl text-gray-700 mb-2 title-font">So Close!</h2>
+            <p class="text-gray-500 mb-6">You almost had them! Want to try catching that bouquet again for Kevin?</p>
+            <div class="text-6xl mb-6">🥀</div>
+            <button onclick="resetGame()" class="bg-pink-500 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:bg-pink-600 transition w-full">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Screen 4: Win -->
+    <div id="win-screen" class="hidden absolute inset-0 flex flex-col items-center justify-center z-40 bg-pink-50 overflow-hidden">
+        <div id="confetti-container" class="absolute inset-0 pointer-events-none"></div>
+        <div class="z-50 text-center p-6 bg-white/60 backdrop-blur-md rounded-3xl shadow-xl m-4 border-2 border-pink-200 max-w-lg">
+            <h1 class="text-5xl md:text-6xl text-rose-600 mb-2 title-font heart-pulse">Happy Rose Day</h1>
+            <h2 class="text-3xl md:text-4xl text-pink-500 mb-6 title-font">Sanchari! ❤️</h2>
+            <div class="bg-white p-6 rounded-2xl shadow-inner mb-6">
+                <p class="text-gray-700 italic text-lg leading-relaxed">
+                    "Just like these roses, you add beauty and color to my world. Sending you a basket full of love today!"
+                </p>
+                <p class="text-right text-pink-500 font-bold mt-4">- Kevin</p>
+            </div>
+            <div class="flex justify-center gap-4 text-4xl">
+                <span class="floating" style="animation-delay: 0s">🌹</span>
+                <span class="floating" style="animation-delay: 0.5s">✨</span>
+                <span class="floating" style="animation-delay: 1s">🌹</span>
+            </div>
+            <button onclick="resetGame()" class="mt-8 text-pink-400 hover:text-pink-600 underline text-sm">
+                Play again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx;
+        let isMuted = false;
+        let bgmInterval;
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('mute-btn').classList.remove('hidden');
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('mute-btn').innerText = isMuted ? '🔇' : '🔊';
+            if (isMuted) stopMusic(); else startMusic();
+        }
+
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (isMuted || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playCatchSound() { playTone(880, 'sine', 0.5, 0.1); setTimeout(() => playTone(1108, 'sine', 0.5, 0.1), 100); }
+        function playHurtSound() { playTone(150, 'sawtooth', 0.3, 0.1); }
+        function playWinFanfare() { [523.25, 659.25, 783.99, 1046.50].forEach((n, i) => setTimeout(() => playTone(n, 'sine', 1.0, 0.1), i * 150)); }
+
+        const melody = [523.25, 659.25, 783.99, 987.77, 1046.50, 987.77, 783.99, 659.25];
+        let noteIndex = 0;
+        function startMusic() {
+            if (isMuted || bgmInterval) return;
+            bgmInterval = setInterval(() => { if(!isMuted && gameState === 'playing') { playTone(melody[noteIndex] / 2, 'sine', 1.5, 0.05); noteIndex = (noteIndex + 1) % melody.length; } }, 500);
+        }
+        function stopMusic() { if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; } }
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let gameState = 'start', score = 0, timeLeft = 20, lastTime = 0, timerInterval, lastDropTime = 0;
+        let player = { x: 0, y: 0, width: 80, height: 60 }, items = [];
+        const screens = { intro: document.getElementById('intro-screen'), ui: document.getElementById('game-ui'), lose: document.getElementById('game-over-screen'), win: document.getElementById('win-screen'), score: document.getElementById('score-display'), timer: document.getElementById('timer-display'), tutorial: document.getElementById('tutorial-text') };
+
+        function resize() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const isMob = canvas.width < 768;
+            player.width = isMob ? Math.min(100, canvas.width * 0.22) : 100; player.height = player.width * 0.8;
+            player.y = canvas.height - player.height - (isMob ? 80 : 20);
+        }
+        window.addEventListener('resize', resize);
+        let inputX = window.innerWidth / 2;
+        window.addEventListener('mousemove', (e) => inputX = e.clientX);
+        window.addEventListener('touchmove', (e) => { e.preventDefault(); inputX = e.touches[0].clientX; }, { passive: false });
+        window.addEventListener('touchstart', (e) => { e.preventDefault(); inputX = e.touches[0].clientX; }, { passive: false });
+
+        function startGame() {
+            initAudio(); startMusic(); resize();
+            gameState = 'playing'; score = 0; timeLeft = 20; items = [];
+            screens.intro.classList.add('hidden'); screens.lose.classList.add('hidden'); screens.win.classList.add('hidden'); screens.ui.classList.remove('hidden');
+            screens.score.innerText = score; screens.timer.innerText = timeLeft;
+            screens.tutorial.style.opacity = '1'; setTimeout(() => screens.tutorial.style.opacity = '0', 3000);
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => { if (gameState === 'playing') { timeLeft--; screens.timer.innerText = timeLeft; if (timeLeft <= 0) endGame(false); } }, 1000);
+            requestAnimationFrame(gameLoop);
+        }
+        function resetGame() { startGame(); }
+        function endGame(won) {
+            gameState = won ? 'win' : 'gameover'; clearInterval(timerInterval); screens.ui.classList.add('hidden'); stopMusic();
+            if (won) { screens.win.classList.remove('hidden'); playWinFanfare(); startConfetti(); } else { screens.lose.classList.remove('hidden'); playHurtSound(); }
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'playing') return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            player.x += (inputX - player.width/2 - player.x) * 0.2;
+            player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+            ctx.font = `${player.height}px Arial`; ctx.fillText("🧺", player.x, player.y);
+
+            if (timestamp - lastDropTime > 800) {
+                const isRose = Math.random() > 0.3; const size = canvas.width < 768 ? 35 : 50;
+                items.push({ x: Math.random()*(canvas.width-size), y: -size, size, speed: Math.random()*3+2, type: isRose?'rose':'bad', emoji: isRose?'🌹':'🥀' });
+                lastDropTime = timestamp;
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                let item = items[i]; item.y += item.speed;
+                ctx.font = `${item.size}px Arial`; ctx.fillText(item.emoji, item.x, item.y);
+                if (item.x < player.x + player.width && item.x + item.size > player.x && item.y < player.y + player.height && item.y + item.size > player.y) {
+                    if (item.type === 'rose') { score++; playCatchSound(); } else { score = Math.max(0, score-2); playHurtSound(); }
+                    screens.score.innerText = score; items.splice(i, 1);
+                    if (score >= 10) endGame(true);
+                    continue;
+                }
+                if (item.y > canvas.height) items.splice(i, 1);
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startConfetti() {
+            const container = document.getElementById('confetti-container'); container.innerHTML = '';
+            for (let i = 0; i < 100; i++) {
+                const conf = document.createElement('div'); conf.classList.add('confetti');
+                conf.style.left = Math.random() * 100 + 'vw'; conf.style.backgroundColor = ['#ff0000', '#ff69b4', '#ffffff', '#ff1493'][Math.floor(Math.random()*4)];
+                conf.style.animationDuration = (Math.random()*3+2)+'s'; container.appendChild(conf);
+            }
+        }
+        window.onload = resize;
+    </script>
+</body>
+</html>
